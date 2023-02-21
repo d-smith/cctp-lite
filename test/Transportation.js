@@ -11,21 +11,33 @@ describe("Token contract", function() {
         myToken = await MyToken.deploy();
         await myToken.deployed();
 
-        return {myToken, owner, addr1, addr2};
+        const Transporter = await ethers.getContractFactory("Transporter");
+        transporter = await Transporter.deploy(123);
+        await transporter.deployed();
+        
+
+        return {myToken, transporter, owner, addr1, addr2};
 
     }
 
-    describe("Deployment", function () {
+    describe("Token Deployment", function () {
         it("Should set the right owner", async function () {
-            const { myToken, owner } = await loadFixture(testFixture);
+            const { myToken, _, owner } = await loadFixture(testFixture);
             expect(await myToken.owner()).to.equal(owner.address);
         });
 
         it("Should assign the total supply to the owner", async function() {
-            const { myToken, owner } = await loadFixture(testFixture);
+            const { myToken, _, owner } = await loadFixture(testFixture);
             const ownerBalance = await myToken.balanceOf(owner.address);
             const totalSupply = await myToken.totalSupply();
             expect(Number(totalSupply)).to.equal(Number(ownerBalance));
+        });
+    });
+
+    describe("Transporter Deployment", function () {
+        it("Should set the local domain", async function () {
+            const { _, transporter } = await loadFixture(testFixture);
+            expect(await transporter.localDomain()).to.equal(123);
         });
     });
     
