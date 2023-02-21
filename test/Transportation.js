@@ -11,12 +11,20 @@ describe("Token contract", function() {
         myToken = await MyToken.deploy();
         await myToken.deployed();
 
-        const Transporter = await ethers.getContractFactory("Transporter");
+        const Message = await ethers.getContractFactory("Message");
+        message = await Message.deploy();
+        await message.deployed();
+
+        const Transporter = await ethers.getContractFactory("Transporter", {
+            libraries: {
+                Message: message.address,
+            }
+        });
         transporter = await Transporter.deploy(123);
         await transporter.deployed();
         
 
-        return {myToken, transporter, owner, addr1, addr2};
+        return {myToken, transporter, owner, addr1, addr2, message};
 
     }
 
@@ -39,6 +47,34 @@ describe("Token contract", function() {
             const { _, transporter } = await loadFixture(testFixture);
             expect(await transporter.localDomain()).to.equal(123);
         });
+    });
+
+    describe("Deposit for burn", function() {
+        it("Allows deposit for burn", async function() {
+            const {myToken, transporter, _, addr1, addr2, message } =  await loadFixture(testFixture);
+            
+            console.log('allowance set up');
+            await myToken.transfer(addr1.address, 50);
+            await myToken.connect(addr1).approve(transporter.address, 10);
+            const allowance = await myToken.allowance(addr1.address, transporter.address);
+            expect(Number(allowance)).to.equal(10);
+
+            console.log('get b32 address')
+            let b32addr = await message.addressToBytes32(addr2.address);
+
+            console.log('call deposit for burn')
+            await expect(transporter.connect(addr1).depositForBurn(
+                6,
+                234, 
+                b32addr, //any address will due for this test
+                myToken.address
+            ))
+            .to.emit(transporter, "DepositForBurn");
+
+            const addr1Balance = await myToken.balanceOf(addr1.address);
+            expect(Number(addr1Balance)).to.equal(44);
+        });
+        
     });
     
         
