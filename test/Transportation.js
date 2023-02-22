@@ -53,26 +53,36 @@ describe("Token contract", function() {
         it("Allows deposit for burn", async function() {
             const {myToken, transporter, _, addr1, addr2, message } =  await loadFixture(testFixture);
             
-            console.log('allowance set up');
             await myToken.transfer(addr1.address, 50);
             await myToken.connect(addr1).approve(transporter.address, 10);
             const allowance = await myToken.allowance(addr1.address, transporter.address);
             expect(Number(allowance)).to.equal(10);
 
-            console.log('get b32 address')
             let b32addr = await message.addressToBytes32(addr2.address);
 
-            console.log('call deposit for burn')
-            await expect(transporter.connect(addr1).depositForBurn(
+            let tx = await transporter.connect(addr1).depositForBurn(
                 6,
                 234, 
                 b32addr, //any address will due for this test
                 myToken.address
-            ))
-            .to.emit(transporter, "DepositForBurn");
+            );
+
+            let receipt = await tx.wait();
+            let msgSent = receipt.events.filter(e => e.event === 'MessageSent');
+            //console.log(msgSent[0].args['message']);
+
+            let msg = msgSent[0].args['message'];
+            expect(Number(msg)).to.be.greaterThan(0);
+
+            let d4b = receipt.events.filter(e => e.event === 'DepositForBurn')[0];
+            //console.log(d4b);
+            expect(Number(d4b.args['nonce'])).to.equal(0)
+            expect(Number(d4b.args['amount'])).to.equal(6)
+
 
             const addr1Balance = await myToken.balanceOf(addr1.address);
             expect(Number(addr1Balance)).to.equal(44);
+            
         });
         
     });
